@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ConnectIn - People</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="./feed.html" class="nav-logo">ConnectIn</a>
+      <div class="nav-links">
+        <a href="./feed.html" class="nav-link">Feed</a>
+        <a href="./profile.html" class="nav-link">Profile</a>
+        <a href="./connections.html" class="nav-link">People</a>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-container">
+    <!-- Incoming requests -->
+    <div class="card">
+      <h2>Connection Requests <span id="receivedCount" class="count-pill">0</span></h2>
+      <div id="receivedList">
+        <p class="empty-state">Loading...</p>
+      </div>
+    </div>
+
+    <!-- Sent requests -->
+    <div class="card">
+      <h2>Pending Sent Requests</h2>
+      <div id="sentList">
+        <p class="empty-state">Loading...</p>
+      </div>
+    </div>
+
+    <!-- All people -->
+    <div class="card">
+      <h2>Discover People</h2>
+      <input type="text" id="peopleSearch" placeholder="Search by name or user ID" style="margin-bottom: 16px;">
+      <div id="peopleList">
+        <p class="empty-state">Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../js/connections.js"></script>
+</body>
+
+</html>
