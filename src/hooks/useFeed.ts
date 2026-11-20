@@ -3,6 +3,7 @@ import { postsApi } from '@/api/postsApi';
 import { PostDto, FeedPost } from '@/types/post';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { useNotifications } from '@/context/NotificationContext';
 import { useNetwork } from './useNetwork';
 import { useState, useEffect } from 'react';
 import { AUTH_KEYS } from '@/api/client';
@@ -12,6 +13,7 @@ export function useFeed() {
   const currentUserId = user?.id || 0;
   const queryClient = useQueryClient();
   const { success, error: toastError } = useToast();
+  const { recordLikeNotification } = useNotifications();
   const { firstDegreeConnections, userNameMap } = useNetwork();
 
   // Local state for tracking posts liked by current user
@@ -128,6 +130,14 @@ export function useFeed() {
         return { postId, liked: true };
       }
     },
+    onSuccess: (result) => {
+      if (result.liked) {
+        const post = enrichedFeed.find((p) => p.id === result.postId);
+        if (post && post.userId !== currentUserId) {
+          recordLikeNotification(post.userId, post.id, post.content);
+        }
+      }
+    },
     onMutate: async ({ postId, isCurrentlyLiked }) => {
       // Optimistic update
       setLikedPostIds((prev) => {
@@ -139,6 +149,14 @@ export function useFeed() {
         }
         return next;
       });
+
+      // Trigger notification if liking another user's post
+      if (!isCurrentlyLiked) {
+        const post = enrichedFeed.find((p) => p.id === postId);
+        if (post && post.userId !== currentUserId) {
+          recordLikeNotification(post.userId, post.id, post.content);
+        }
+      }
     },
     onError: (err: Error, { postId, isCurrentlyLiked }) => {
       // Revert optimistic update
@@ -154,6 +172,10 @@ export function useFeed() {
       // If error message indicates already liked or already unliked, sync silently
       if (err.message.includes('not like the Post again')) {
         setLikedPostIds((prev) => new Set(prev).add(postId));
+        const post = enrichedFeed.find((p) => p.id === postId);
+        if (post && post.userId !== currentUserId) {
+          recordLikeNotification(post.userId, post.id, post.content);
+        }
       } else if (err.message.includes('not unlike the Post')) {
         setLikedPostIds((prev) => {
           const next = new Set(prev);

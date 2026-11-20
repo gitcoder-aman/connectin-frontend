@@ -3,6 +3,7 @@ import { connectionsApi } from '@/api/connectionsApi';
 import { Person, ConnectionStatus } from '@/types/connection';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { useNotifications } from '@/context/NotificationContext';
 import { useMemo } from 'react';
 
 export const NETWORK_QUERY_KEYS = {
@@ -17,6 +18,7 @@ export function useNetwork() {
   const currentUserId = user?.id || 0;
   const queryClient = useQueryClient();
   const { success, error: toastError } = useToast();
+  const { recordRequestNotification, recordAcceptNotification } = useNotifications();
 
   // All network users
   const allPersonsQuery = useQuery({
@@ -26,12 +28,12 @@ export function useNetwork() {
     staleTime: 30000,
   });
 
-  // 1st degree connections of current user
+  // 1st degree connections of current user (bidirectionally resolved)
   const firstDegreeQuery = useQuery({
     queryKey: NETWORK_QUERY_KEYS.firstDegree(currentUserId),
-    queryFn: () => connectionsApi.getFirstDegreeConnections(currentUserId),
+    queryFn: () => connectionsApi.getBidirectionalConnections(currentUserId, allPersonsQuery.data),
     enabled: currentUserId > 0,
-    staleTime: 30000,
+    staleTime: 20000,
   });
 
   // Outgoing pending requests sent by current user
@@ -94,6 +96,7 @@ export function useNetwork() {
   const sendRequestMutation = useMutation({
     mutationFn: (targetUserId: number) => connectionsApi.sendConnectionRequest(targetUserId),
     onSuccess: (_, targetUserId) => {
+      recordRequestNotification(targetUserId, user?.name);
       invalidateAllNetwork();
       const targetName = userNameMap[targetUserId] || `User ${targetUserId}`;
       success(`Connection request sent to ${targetName}.`);
@@ -107,6 +110,17 @@ export function useNetwork() {
   const acceptRequestMutation = useMutation({
     mutationFn: (senderUserId: number) => connectionsApi.acceptConnectionRequest(senderUserId),
     onSuccess: (_, senderUserId) => {
+      // Instantly register in local mutual connections so both sides reflect immediately
+      try {
+        const storageKey = `connectin_mutual_conns_${currentUserId}`;
+        const stored = localStorage.getItem(storageKey);
+        const set = new Set<number>(stored ? JSON.parse(stored) : []);
+        set.add(senderUserId);
+        localStorage.setItem(storageKey, JSON.stringify(Array.from(set)));
+      } catch {
+        // ignore
+      }
+      recordAcceptNotification(senderUserId, user?.name);
       invalidateAllNetwork();
       const targetName = userNameMap[senderUserId] || `User ${senderUserId}`;
       success(`You are now connected with ${targetName}!`);
@@ -132,6 +146,17 @@ export function useNetwork() {
   const removeConnectionMutation = useMutation({
     mutationFn: (targetUserId: number) => connectionsApi.removeConnection(targetUserId),
     onSuccess: (_, targetUserId) => {
+      try {
+        const storageKey = `connectin_mutual_conns_${currentUserId}`;
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const set = new Set<number>(JSON.parse(stored));
+          set.delete(targetUserId);
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(set)));
+        }
+      } catch {
+        // ignore
+      }
       invalidateAllNetwork();
       const targetName = userNameMap[targetUserId] || `User ${targetUserId}`;
       success(`Removed connection with ${targetName}.`);

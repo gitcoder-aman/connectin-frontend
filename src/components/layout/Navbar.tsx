@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNetwork } from '@/hooks/useNetwork';
+import { useNotifications } from '@/context/NotificationContext';
 import { getInitials } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 import { BackendStatusModal } from '@/components/system/BackendStatusModal';
@@ -21,6 +22,7 @@ import { BackendStatusModal } from '@/components/system/BackendStatusModal';
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { receivedRequests } = useNetwork();
+  const { unreadCount } = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -46,7 +48,12 @@ export const Navbar: React.FC = () => {
       icon: Users,
       badge: pendingInvitationsCount > 0 ? pendingInvitationsCount : undefined,
     },
-    { label: 'Notifications', path: '/notifications', icon: Bell },
+    {
+      label: 'Notifications',
+      path: '/notifications',
+      icon: Bell,
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
     { label: 'Media Uploader', path: '/upload', icon: UploadCloud },
   ];
 

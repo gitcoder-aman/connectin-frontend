@@ -2,11 +2,13 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Users, Bell, UploadCloud, User } from 'lucide-react';
 import { useNetwork } from '@/hooks/useNetwork';
+import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/utils/cn';
 
 export const MobileNav: React.FC = () => {
   const location = useLocation();
   const { receivedRequests } = useNetwork();
+  const { unreadCount } = useNotifications();
   const pendingCount = receivedRequests.length;
 
   const links = [
@@ -18,7 +20,12 @@ export const MobileNav: React.FC = () => {
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
     { label: 'Upload', path: '/upload', icon: UploadCloud },
-    { label: 'Notifs', path: '/notifications', icon: Bell },
+    {
+      label: 'Notifs',
+      path: '/notifications',
+      icon: Bell,
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
     { label: 'Profile', path: '/profile', icon: User },
   ];
 
