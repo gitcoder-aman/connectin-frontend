@@ -22,7 +22,7 @@ export const App: React.FC = () => {
       <ToastProvider>
         <AuthProvider>
           <NotificationProvider>
-            <BrowserRouter>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
               <AppRoutes />
             </BrowserRouter>
           </NotificationProvider>

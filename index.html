@@ -2,13 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ConnectIn - Professional Microservices Social Networking Platform" />
     <title>ConnectIn | Professional Social Network</title>
   </head>
   <body class="bg-[#f3f2ef] text-slate-800 antialiased min-h-screen">
     <div id="root"></div>
+    <script>
+      (function () {
+        var params = window.location.search;
+        if (params.startsWith('?/')) {
+          var routeAndQuery = params.slice(2);
+          var parts = routeAndQuery.split('&');
+          var route = parts.shift();
+          var query = parts.length ? '?' + parts.join('&') : '';
+          var hash = window.location.hash;
+          window.history.replaceState(
+            null,
+            '',
+            '/connectin-frontend/' + route + query + hash
+          );
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
