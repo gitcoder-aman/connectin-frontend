@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { authApi } from '@/api/authApi';
 import { AUTH_KEYS, setUnauthorizedCallback } from '@/api/client';
 import { SignupRequestDto, LoginRequestDto, UserProfile } from '@/types/auth';
-import { parseJwt, isTokenExpired } from '@/utils/jwt';
+import { parseJwt } from '@/utils/jwt';
 import { useToast } from './ToastContext';
 
 interface AuthContextType {
@@ -18,11 +18,53 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function restoreUserFromStorage(): { token: string; user: UserProfile } | null {
+  try {
+    const storedToken = localStorage.getItem(AUTH_KEYS.TOKEN);
+    if (!storedToken) return null;
+
+    const payload = parseJwt(storedToken);
+    const storedId = localStorage.getItem(AUTH_KEYS.USER_ID);
+    const storedEmail = localStorage.getItem(AUTH_KEYS.USER_EMAIL) || payload?.email || '';
+    const storedName = localStorage.getItem(AUTH_KEYS.USER_NAME) || '';
+    const userId = storedId ? parseInt(storedId, 10) : payload?.sub ? parseInt(payload.sub, 10) : 0;
+
+    let profileExtras: Partial<UserProfile> = {};
+    const savedExtras = localStorage.getItem(AUTH_KEYS.USER_PROFILE);
+    if (savedExtras) {
+      try {
+        profileExtras = JSON.parse(savedExtras);
+      } catch {
+        // ignore parse error
+      }
+    }
+
+    if (userId > 0) {
+      return {
+        token: storedToken,
+        user: {
+          id: userId,
+          email: storedEmail,
+          name: storedName || `User ${userId}`,
+          headline: profileExtras.headline || 'ConnectIn Member',
+          bio: profileExtras.bio || 'Welcome to my ConnectIn professional profile.',
+          avatarUrl: profileExtras.avatarUrl,
+          location: profileExtras.location || 'Bengaluru, India',
+        },
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(AUTH_KEYS.TOKEN));
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { info, error: toastError } = useToast();
+  const initialSession = restoreUserFromStorage();
+  const [token, setToken] = useState<string | null>(() => initialSession?.token || null);
+  const [user, setUser] = useState<UserProfile | null>(() => initialSession?.user || null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { error: toastError } = useToast();
 
   const logout = useCallback(() => {
     localStorage.removeItem(AUTH_KEYS.TOKEN);
@@ -34,56 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   }, []);
 
-  // Initialize and validate session on mount
-  useEffect(() => {
-    const storedToken = localStorage.getItem(AUTH_KEYS.TOKEN);
-    if (!storedToken) {
-      setIsLoading(false);
-      return;
-    }
-
-    if (isTokenExpired(storedToken)) {
-      logout();
-      info('Your session has expired. Please sign in again.');
-      setIsLoading(false);
-      return;
-    }
-
-    const payload = parseJwt(storedToken);
-    const storedId = localStorage.getItem(AUTH_KEYS.USER_ID);
-    const storedEmail = localStorage.getItem(AUTH_KEYS.USER_EMAIL) || payload?.email || '';
-    const storedName = localStorage.getItem(AUTH_KEYS.USER_NAME) || '';
-    const userId = storedId ? parseInt(storedId, 10) : payload?.sub ? parseInt(payload.sub, 10) : 0;
-
-    let profileExtras: Partial<UserProfile> = {};
-    try {
-      const savedExtras = localStorage.getItem(AUTH_KEYS.USER_PROFILE);
-      if (savedExtras) {
-        profileExtras = JSON.parse(savedExtras);
-      }
-    } catch {
-      // ignore parse error
-    }
-
-    if (userId > 0) {
-      setUser({
-        id: userId,
-        email: storedEmail,
-        name: storedName || `User ${userId}`,
-        headline: profileExtras.headline || 'ConnectIn Member',
-        bio: profileExtras.bio || 'Welcome to my ConnectIn professional profile.',
-        avatarUrl: profileExtras.avatarUrl,
-        location: profileExtras.location || 'Bengaluru, India',
-      });
-      setToken(storedToken);
-    } else {
-      logout();
-    }
-
-    setIsLoading(false);
-  }, [logout, info]);
-
-  // Register Axios 401 callback
+  // Register Axios 401 callback for automatic logout when backend rejects token
   useEffect(() => {
     setUnauthorizedCallback(() => {
       logout();

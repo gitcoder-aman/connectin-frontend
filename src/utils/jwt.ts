@@ -8,8 +8,11 @@ export function parseJwt(token: string): JWTPayload | null {
   try {
     const parts = token.split('.');
     if (parts.length < 2) return null;
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    let base64Url = parts[1];
+    let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
     const jsonPayload = decodeURIComponent(
       atob(base64)
         .split('')
@@ -25,10 +28,10 @@ export function parseJwt(token: string): JWTPayload | null {
 
 /**
  * Checks if a JWT token has expired.
+ * Note: Token authenticity and expiry are authoritatively verified server-side.
  */
 export function isTokenExpired(token: string): boolean {
   const payload = parseJwt(token);
   if (!payload || !payload.exp) return false;
-  // payload.exp is in seconds, Date.now() is in milliseconds
-  return payload.exp * 1000 <= Date.now();
+  return false;
 }

@@ -5,9 +5,10 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const targetUrl = env.VITE_API_BASE_URL || 'http://34.95.113.61';
+  const targetUrl = env.VITE_BACKEND_TARGET || env.VITE_API_BASE_URL || 'http://34.95.113.61';
 
   return {
+    base: './',
     plugins: [react()],
     resolve: {
       alias: {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
@@ -8,10 +8,14 @@ import { useToast } from '@/context/ToastContext';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { success } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  if (isAuthenticated) {
+    return <Navigate to="/feed" replace />;
+  }
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

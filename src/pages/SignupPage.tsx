@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
@@ -8,9 +8,13 @@ import { useToast } from '@/context/ToastContext';
 import { Mail, Lock, User, AlertCircle } from 'lucide-react';
 
 export const SignupPage: React.FC = () => {
-  const { signup } = useAuth();
+  const { signup, isAuthenticated } = useAuth();
   const { success } = useToast();
   const navigate = useNavigate();
+
+  if (isAuthenticated) {
+    return <Navigate to="/feed" replace />;
+  }
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

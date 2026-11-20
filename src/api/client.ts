@@ -1,9 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { SpringApiError } from '@/types/api';
 
-// In development, if using relative paths, Vite proxy forwards to backend.
-// In production or when configured, VITE_API_BASE_URL is used directly.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://34.95.113.61';
+// In development or when using Vite proxy, relative path "" eliminates CORS preflight OPTIONS failures.
+// In production or when explicitly configured, VITE_API_BASE_URL is used directly.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? '' : 'http://34.95.113.61');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -42,6 +42,16 @@ apiClient.interceptors.request.use(
     // The Gateway checks Authorization, so we provide both.
     if (userId) {
       config.headers.set('X-User-Id', userId);
+    }
+
+    // Ensure POST/PUT/PATCH requests have a defined body to guarantee Content-Length is sent,
+    // preventing Google Cloud Load Balancer (GCE Ingress) from rejecting requests with "411 Length Required".
+    if (
+      ['post', 'put', 'patch'].includes(config.method?.toLowerCase() || '') &&
+      config.data === undefined
+    ) {
+      config.data = {};
+      config.headers.set('Content-Type', 'application/json');
     }
 
     return config;
