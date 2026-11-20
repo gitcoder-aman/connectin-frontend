@@ -48,19 +48,19 @@ The frontend interacts with the **ConnectIn** backend deployed on **Google Kuber
         │  • Downstream X-User-Id Header Enrichment
         │  • Prefix Stripping (/api/v1/* -> /*)
         │
-        ├── /api/v1/users/**       ──► User Service (:9020)       ──► PostgreSQL (userDB)
-        │                                  │ [user_created_topic]
-        │                                  ▼
-        ├── /api/v1/connections/** ──► Connections Service (:9030) ──► Neo4j Graph DB
-        │                                  ▲
-        └── /api/v1/posts/**       ──► Post Service (:9010)       ──► PostgreSQL (postsDB)
-                                           │ (OpenFeign)
-                                           ├──► Uploader Service (:9050) ──► Cloudinary CDN
-                                           │
-                                           └──► [Kafka Topics: post_created, post_liked]
-                                                        │
-                                                        ▼
-                                                Notification Service (:9040) ──► PostgreSQL
+        ├── /api/v1/users/**         ──► User Service (:9020)         ──► PostgreSQL (userDB)
+        │                                    │ [user_created_topic]
+        │                                    ▼
+        ├── /api/v1/connections/**   ──► Connections Service (:9030)  ──► Neo4j Graph DB
+        │                                    ▲
+        ├── /api/v1/posts/**         ──► Post Service (:9010)         ──► PostgreSQL (postsDB)
+        │                                    │ (OpenFeign)
+        │                                    ├──► Uploader Service (:9050) ──► Cloudinary CDN
+        │                                    │
+        │                                    └──► [Kafka Topics: post_created, post_liked]
+        │                                                 │
+        │                                                 ▼
+        └── /api/v1/notifications/** ──► Notification Service (:9040) ──► PostgreSQL (notificationDB)
 ```
 
 ---
@@ -107,9 +107,12 @@ Organized across **4 intuitive tabs** with real-time counters:
 * In-line profile editor modal allowing users to customize their headline, bio, and location (persisted in local storage).
 * Tabular post history rendering all posts authored by the selected member.
 
-### 5. Notifications Hub (`/notifications`)
-* Displays incoming connection invitations derived from `connections-service`.
-* Includes an architectural callout explaining the backend's asynchronous Kafka event-driven notification ingestion pipeline.
+### 5. Live Notifications Hub (`/notifications`)
+* **Real-Time Kafka Event Integration:** Consumes real-time notifications persisted from Kafka (`post_liked_topic`, `post_created_topic`) via backend REST endpoint `/api/v1/notifications/core/users/{userId}`.
+* **Notification Cards:** Displays like alerts ("User with id: 6 has liked your post with id: 6") and connection post notifications with relative timestamps.
+* **Navbar Unread Counter Badge:** Live red badge counter on the top navigation bar with automated 10-second background polling.
+* **Mark All As Read:** One-click clear action that synchronizes read status to `localStorage` and dismisses the badge counter.
+* **Connection Requests:** Displays pending incoming network requests alongside activity alerts.
 
 ---
 
@@ -134,6 +137,8 @@ All frontend service calls interface with verified Spring Boot microservice endp
 | **Network** | `POST` | `/api/v1/connections/core/accept/{senderId}` | Bearer | Path: `senderId`, Body: `{}` | `204 No Content` |
 | **Network** | `POST` | `/api/v1/connections/core/reject/{senderId}` | Bearer | Path: `senderId`, Body: `{}` | `204 No Content` |
 | **Network** | `DELETE` | `/api/v1/connections/core/remove/{userId}` | Bearer | Path: `userId` | `204 No Content` |
+| **Notifications** | `GET` | `/api/v1/notifications/core/users/{userId}` | Bearer | Path: `userId` | `200 OK` (`List<Notification>`) |
+| **Notifications** | `GET` | `/api/v1/notifications/core` | Bearer | Header: `X-User-Id` | `200 OK` (`List<Notification>`) |
 
 ---
 
@@ -257,6 +262,7 @@ connectin-frontend/
     │   ├── authApi.ts           # Login and signup API calls
     │   ├── postsApi.ts          # Posts, likes, and feed calls
     │   ├── connectionsApi.ts    # Neo4j graph connection endpoints
+    │   ├── notificationsApi.ts  # Backend Kafka notification stream endpoints
     │   └── uploaderApi.ts       # Cloudinary media uploader service
     ├── components/
     │   ├── common/              # Reusable UI primitives
@@ -290,6 +296,7 @@ connectin-frontend/
     │       └── BackendStatusModal.tsx # Live GKE microservices inspector
     ├── context/
     │   ├── AuthContext.tsx      # Session management and synchronous restoration
+    │   ├── NotificationContext.tsx # Live Kafka notification polling & unread badge sync
     │   └── ToastContext.tsx     # System notification toasts
     ├── hooks/
     │   ├── useFeed.ts           # Post creation, likes, and timeline aggregation
@@ -322,12 +329,12 @@ connectin-frontend/
 
 ---
 
-## ⚠️ Documented Backend Architectural Boundaries
+## ⚠️ Documented Backend Architectural Boundaries & Integrations
 
-The frontend strictly respects backend boundaries without modifying any backend Java code:
+The frontend strictly aligns with backend boundaries and contracts:
 
 1. **No Global Feed Endpoint:** `postService` only exposes `/core/users/{userId}/all-posts`. The frontend dynamically aggregates posts from mutual 1st-degree connections using React Query.
-2. **No Notification REST Controller:** `notification-service` is an asynchronous event consumer. The notifications page derives incoming activity from `connections-service` and provides architectural transparency.
+2. **Notification REST API Integration:** The backend `notification-service` exposes `/api/v1/notifications/core/users/{userId}`, which the frontend polls every 10 seconds to display real-time Kafka post like events and connection post updates.
 3. **No Comments Entity:** The backend does not implement comments. The comment button displays an architectural notice.
 4. **No User Profile Editing API:** User metadata like headline and bio are cached in `localStorage`.
 5. **No Pagination Parameters:** Backend endpoints return complete arrays, which the frontend renders cleanly with search filtering.

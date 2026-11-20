@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { NotificationItem } from '@/types/notification';
+import { notificationsApi } from '@/api/notificationsApi';
 import { useAuth } from './AuthContext';
 
 const NOTIFICATIONS_STORAGE_KEY = 'connectin_app_notifications';
@@ -92,6 +93,81 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // ignore
     }
   };
+
+  // Sync real-time notifications directly from backend notification-service
+  useEffect(() => {
+    const uid = Number(currentUserId);
+    if (!uid || uid <= 0) return;
+
+    let isMounted = true;
+    const fetchBackendNotifications = async () => {
+      try {
+        const backendList = await notificationsApi.getNotificationsByUserId(uid);
+        if (!isMounted || !Array.isArray(backendList) || backendList.length === 0) return;
+
+        const readKey = `connectin_read_notifs_${uid}`;
+        const readIds = new Set<string>();
+        try {
+          const storedRead = localStorage.getItem(readKey);
+          if (storedRead) {
+            JSON.parse(storedRead).forEach((id: string) => readIds.add(id));
+          }
+        } catch {
+          // ignore
+        }
+
+        const mapped: NotificationItem[] = backendList.map((b) => {
+          const notifId = `backend-${b.id}`;
+          const msg = b.message || '';
+          const isLike = msg.toLowerCase().includes('liked your post');
+          const isPost = msg.toLowerCase().includes('created this post');
+
+          let title = 'Notification';
+          let type: 'like' | 'request' | 'accept' | 'system' = 'system';
+          if (isLike) {
+            title = 'Post Liked';
+            type = 'like';
+          } else if (isPost) {
+            title = 'Network Activity';
+            type = 'system';
+          }
+
+          return {
+            id: notifId,
+            type,
+            title,
+            description: msg,
+            time: b.createdAt || new Date().toISOString(),
+            read: readIds.has(notifId),
+            targetUserId: uid,
+            link: isLike || isPost ? '/feed' : '/network',
+          };
+        });
+
+        setAllNotifications((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const toAdd = mapped.filter((m) => !existingIds.has(m.id));
+          if (toAdd.length === 0) return prev;
+          const merged = [...toAdd, ...prev];
+          try {
+            localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(merged));
+          } catch {
+            // ignore
+          }
+          return merged;
+        });
+      } catch (err) {
+        console.warn('Error syncing backend notifications:', err);
+      }
+    };
+
+    fetchBackendNotifications();
+    const interval = setInterval(fetchBackendNotifications, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [currentUserId]);
 
   // Filter notifications addressed to the current logged-in user
   const userNotifications = useMemo(() => {
@@ -255,18 +331,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 
   const markAsRead = useCallback((id: string) => {
+    const uid = Number(currentUserId);
+    if (uid > 0) {
+      try {
+        const readKey = `connectin_read_notifs_${uid}`;
+        const stored = localStorage.getItem(readKey);
+        const set = new Set<string>(stored ? JSON.parse(stored) : []);
+        set.add(id);
+        localStorage.setItem(readKey, JSON.stringify(Array.from(set)));
+      } catch {
+        // ignore
+      }
+    }
     setAllNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
     broadcastChange();
-  }, []);
+  }, [currentUserId]);
 
   const markAllAsRead = useCallback(() => {
+    const uid = Number(currentUserId);
+    if (uid > 0) {
+      try {
+        const readKey = `connectin_read_notifs_${uid}`;
+        const allIds = userNotifications.map((n) => n.id);
+        localStorage.setItem(readKey, JSON.stringify(allIds));
+      } catch {
+        // ignore
+      }
+    }
     setAllNotifications((prev) =>
-      prev.map((n) => (n.targetUserId === currentUserId ? { ...n, read: true } : n))
+      prev.map((n) => (Number(n.targetUserId) === uid ? { ...n, read: true } : n))
     );
     broadcastChange();
-  }, [currentUserId]);
+  }, [currentUserId, userNotifications]);
 
   const clearAll = useCallback(() => {
     setAllNotifications((prev) =>
