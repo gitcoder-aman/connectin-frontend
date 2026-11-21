@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const UPLOADER_BASE_URL =
-  import.meta.env.VITE_UPLOADER_BASE_URL ?? (import.meta.env.DEV ? '' : 'http://34.95.113.61:9050');
+  import.meta.env.VITE_UPLOADER_BASE_URL ?? (import.meta.env.DEV ? '' : 'https://34.95.113.61.sslip.io');
 
 /**
  * Direct file uploader for testing standalone uploader-service

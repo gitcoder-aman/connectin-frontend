@@ -80,7 +80,7 @@ export const SidebarRight: React.FC = () => {
         </div>
         <p className="text-xs text-slate-300 leading-relaxed mb-3">
           Connected to ConnectIn Kubernetes cluster via API Gateway at{' '}
-          <code className="text-emerald-400 font-mono text-[11px]">34.95.113.61</code>.
+          <code className="text-emerald-400 font-mono text-[11px]">34.95.113.61.sslip.io</code>.
         </p>
         <div className="flex items-center gap-2 text-[11px] text-slate-400">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />

@@ -45,7 +45,7 @@ export const BackendStatusModal: React.FC<BackendStatusModalProps> = ({ isOpen, 
               Production Gateway Host (GKE)
             </div>
             <div className="font-mono text-sm text-brand-400">
-              {import.meta.env.VITE_API_BASE_URL || 'http://34.95.113.61'}
+              {import.meta.env.VITE_API_BASE_URL || 'https://34.95.113.61.sslip.io'}
             </div>
           </div>
           <div className="flex items-center gap-2">

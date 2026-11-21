@@ -3,7 +3,7 @@ import { SpringApiError } from '@/types/api';
 
 // In development or when using Vite proxy, relative path "" eliminates CORS preflight OPTIONS failures.
 // In production or when explicitly configured, VITE_API_BASE_URL is used directly.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? '' : 'http://34.95.113.61');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? '' : 'https://34.95.113.61.sslip.io');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
