@@ -41,7 +41,7 @@ export const FeedPage: React.FC = () => {
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <div className="h-4 w-1 bg-brand-600 rounded-full" />
-            <h2 className="text-sm font-bold text-slate-800 tracking-tight">Main Network Feed</h2>
+            <h2 className="text-sm font-bold text-slate-800 tracking-tight">Main Community Feed</h2>
           </div>
 
           <Button
@@ -79,8 +79,8 @@ export const FeedPage: React.FC = () => {
         ) : posts.length === 0 ? (
           <EmptyState
             icon={Rss}
-            title="No posts in your network yet"
-            description="Be the first to share an update, or connect with colleagues in My Network to see their posts here."
+            title="No posts published yet"
+            description="Be the first to share an update with the ConnectIn community!"
             actionLabel="Refresh Feed"
             onAction={() => refetchFeed()}
           />

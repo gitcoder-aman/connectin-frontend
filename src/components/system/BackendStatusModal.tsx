@@ -202,6 +202,12 @@ export const BackendStatusModal: React.FC<BackendStatusModalProps> = ({ isOpen, 
                   <td className="p-2 font-sans">Remove connection between users</td>
                 </tr>
                 <tr>
+                  <td className="p-2 text-blue-600 font-bold">GET</td>
+                  <td className="p-2">/api/v1/posts/core/all</td>
+                  <td className="p-2 text-amber-600 font-sans">JWT + X-User-Id</td>
+                  <td className="p-2 font-sans">Get all community posts across platform</td>
+                </tr>
+                <tr>
                   <td className="p-2 text-emerald-600 font-bold">POST</td>
                   <td className="p-2">/api/v1/posts/core</td>
                   <td className="p-2 text-amber-600 font-sans">JWT + X-User-Id</td>

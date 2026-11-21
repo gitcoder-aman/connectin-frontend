@@ -47,6 +47,15 @@ export const postsApi = {
   },
 
   /**
+   * Get all community posts across platform
+   * GET /api/v1/posts/core/all
+   */
+  async getAllPosts(): Promise<PostDto[]> {
+    const response = await apiClient.get<PostDto[]>('/api/v1/posts/core/all');
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  /**
    * Get single post by ID
    * GET /api/v1/posts/core/{postId}
    */

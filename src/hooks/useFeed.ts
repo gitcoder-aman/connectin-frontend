@@ -14,7 +14,7 @@ export function useFeed() {
   const queryClient = useQueryClient();
   const { success, error: toastError } = useToast();
   const { recordLikeNotification } = useNotifications();
-  const { firstDegreeConnections, userNameMap } = useNetwork();
+  const { firstDegreeConnections, userNameMap, allPersons } = useNetwork();
 
   // Local state for tracking posts liked by current user
   const [likedPostIds, setLikedPostIds] = useState<Set<number>>(() => {
@@ -46,31 +46,45 @@ export function useFeed() {
     staleTime: 20000,
   });
 
-  // Query: Feed aggregation from connections
+  // Query: Feed aggregation (open community feed)
   const feedQuery = useQuery({
-    queryKey: ['feed', currentUserId, firstDegreeConnections.map((c) => c.userId).join(',')],
+    queryKey: ['feed', currentUserId, allPersons.map((p) => p.userId).join(',')],
     queryFn: async () => {
-      let allPosts: PostDto[] = [];
-
-      // 1. My posts
+      // 1. Try single efficient backend endpoint to fetch all platform posts
       try {
-        const myPosts = await postsApi.getAllPostsByUser(currentUserId);
-        allPosts = allPosts.concat(myPosts);
+        const allPlatformPosts = await postsApi.getAllPosts();
+        if (allPlatformPosts && allPlatformPosts.length > 0) {
+          return allPlatformPosts;
+        }
       } catch (err) {
-        console.warn('Failed to load my posts for feed:', err);
+        console.warn('Direct /api/v1/posts/core/all not available, falling back to community aggregation:', err);
       }
 
-      // 2. First-degree connections' posts
-      const connectionPromises = firstDegreeConnections.map(async (conn) => {
+      // 2. Fallback: Aggregate posts across all registered community members + current user
+      let allPosts: PostDto[] = [];
+      const userIdsToFetch = new Set<number>();
+      if (currentUserId > 0) userIdsToFetch.add(currentUserId);
+      for (const p of allPersons) {
+        if (p.userId) userIdsToFetch.add(p.userId);
+      }
+      for (const c of firstDegreeConnections) {
+        if (c.userId) userIdsToFetch.add(c.userId);
+      }
+      // If community list not yet populated, include seeded accounts
+      if (userIdsToFetch.size <= 1) {
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].forEach((id) => userIdsToFetch.add(id));
+      }
+
+      const fetchPromises = Array.from(userIdsToFetch).map(async (uid) => {
         try {
-          return await postsApi.getAllPostsByUser(conn.userId);
+          return await postsApi.getAllPostsByUser(uid);
         } catch {
           return [];
         }
       });
 
-      const connectionPostsArrays = await Promise.all(connectionPromises);
-      for (const pList of connectionPostsArrays) {
+      const results = await Promise.all(fetchPromises);
+      for (const pList of results) {
         allPosts = allPosts.concat(pList);
       }
 
